@@ -1,0 +1,89 @@
+services:
+  mariadb:
+    image: mariadb:${MARIADB_VERSION}
+    container_name: ${PROJECT_NAME}-mariadb
+    env_file: ".env"
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mariadb_root_password
+      MYSQL_USER_FILE: /run/secrets/mariadb_user
+      MYSQL_PASSWORD_FILE: /run/secrets/mariadb_password
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    secrets:
+      - mariadb_user
+      - mariadb_password
+      - mariadb_root_password
+    networks:
+      - db
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:${POSTGRES_VERSION}
+    container_name: ${PROJECT_NAME}-postgres
+    env_file: ".env"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_root_password
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    secrets:
+      - postgres_root_password
+    networks:
+      - db
+    restart: unless-stopped
+
+  redis:
+    image: redis:${REDIS_VERSION}
+    container_name: ${PROJECT_NAME}-redis
+    volumes:
+      - redis_data:/data
+    networks:
+      - db
+    restart: unless-stopped
+
+  cli:
+    container_name: ${PROJECT_NAME}-cli
+    build:
+      context: .
+      dockerfile: cli.Dockerfile
+    env_file: ".env"
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mariadb_root_password
+      MYSQL_USER_FILE: /run/secrets/mariadb_user
+      MYSQL_PASSWORD_FILE: /run/secrets/mariadb_password
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_root_password
+    secrets:
+      - mariadb_user
+      - mariadb_password
+      - mariadb_root_password
+      - postgres_root_password
+    networks:
+      - db
+    profiles:
+      - tools
+
+volumes:
+  mariadb_data:
+  pg_data:
+  redis_data:
+
+networks:
+  db:
+    external: true
+
+secrets:
+  mariadb_user:
+    file: ./secrets/mariadb_user
+  mariadb_password:
+    file: ./secrets/mariadb_password
+  mariadb_root_password:
+    file: ./secrets/mariadb_root_password
+  postgres_root_password:
+    file: ./secrets/postgres_root_password

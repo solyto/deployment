@@ -1,0 +1,8 @@
+#!/bin/bash
+
+cd /var/www && \
+rm -rf bootstrap/cache/* && \
+php artisan migrate --force && \
+php artisan cache:clear && \
+php artisan config:cache && \
+php artisan route:cache

@@ -1,0 +1,62 @@
+---
+- name: Deploy app
+  hosts: solyto
+  vars_files:
+    - ../inventory/production/group_vars/app.yml
+  tasks:
+    - name: Ensure deploy directory exists
+      file:
+        path: "{{ target_base_path }}/{{ app_path }}"
+        state: directory
+        owner: "{{ deploy_user }}"
+
+    - name: Ensure node directory exists
+      file:
+        path: "{{ target_base_path }}/{{ app_path }}/node"
+        state: directory
+        owner: "{{ deploy_user }}"
+
+    - name: Copy .env
+      template:
+        src: "{{ playbook_dir }}/../templates/app/.env.j2"
+        dest: "{{ target_base_path }}/{{ app_path }}/.env"
+        owner: "{{ deploy_user }}"
+        mode: "0600"
+
+    - name: Copy docker setup
+      template:
+        src: "{{ playbook_dir }}/../templates/app/{{ item.src }}"
+        dest: "{{ target_base_path }}/{{ app_path }}/{{ item.dest }}"
+        owner: "{{ deploy_user }}"
+      loop:
+        - { src: "compose.yml.j2",     dest: "compose.yml" }
+        - { src: "node/Dockerfile.j2", dest: "node/Dockerfile" }
+
+    - name: Remove old source
+      shell: "rm -rf {{ target_base_path }}/{{ app_path }}/{{ src_path }}/"
+
+    - name: Ensure src directory exists
+      file:
+        path: "{{ target_base_path }}/{{ app_path }}/{{ src_path }}"
+        state: directory
+        owner: "{{ deploy_user }}"
+
+    - name: Copy new source
+      synchronize:
+        src: "{{ local_project_root }}/{{ app_path }}"
+        dest: "{{ target_base_path }}/{{ app_path }}/{{ src_path }}/"
+        rsync_opts:
+          - "--exclude=node_modules --exclude=.env --exclude=build"
+          - "--chown={{ deploy_user }}:{{ deploy_user }}"
+
+    - name: Build images
+      shell: "cd {{ target_base_path }}/{{ app_path }} && docker compose build"
+      register: docker_build
+
+    - name: Print build output
+      debug:
+        msg: "{{ docker_build.stdout_lines }}"
+
+    - name: Restart Docker
+      shell: "cd {{ target_base_path }}/{{ app_path }} && docker compose up -d --remove-orphans"
+      register: docker_restart

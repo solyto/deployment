@@ -1,0 +1,23 @@
+project_name: "api"
+docker_user: "api"
+docker_uid: 1015
+docker_gid: 1015
+environment: "production"
+debug: false
+api_path: "api/"
+php_version: "8.4"
+api_domain: "api.solyto.app"
+frontend_domain: "my.solyto.app"
+landing_page_domain: "solyto.app"
+mail_domain: "solyto.app"
+mail_from_address: "noreply@solyto.app"
+mail_from_name: "solyto.app"
+api_nginx_urls: "api.solyto.app api.solyto.de"
+dav_nginx_urls: "dav.solyto.app dav.solyto.de"
+api_listen_port: 80
+dav_listen_port: 80
+php_fpm_port: 9000
+api_nginx_container: "{{ project_name }}-nginx"
+api_php_container: "{{ project_name }}-php"
+api_queue_container: "{{ project_name }}-queue"
+api_dav_container: "{{ project_name }}-dav"

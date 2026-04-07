@@ -1,0 +1,50 @@
+ARG PHP_VERSION
+
+FROM php:${PHP_VERSION}-fpm
+
+WORKDIR /var/www
+
+RUN chown -R www-data:www-data /var/www/
+
+RUN apt update && apt install -y \
+    git \
+    curl \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    libicu-dev \
+    libsodium-dev \
+    zip \
+    unzip \
+    libzip-dev \
+    vim \
+    libpq-dev \
+    libmagickwand-dev --no-install-recommends
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+RUN apt clean && rm -rf /var/lib/apt/lists/*
+
+RUN docker-php-ext-install pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd intl sodium zip
+
+RUN pecl install redis imagick
+RUN docker-php-ext-enable redis imagick
+
+RUN rm -rf /var/www/*
+
+COPY --chown=www-data:www-data src/ /var/www/
+
+RUN mkdir -p storage/framework/cache && \
+    mkdir -p storage/framework/session && \
+    mkdir -p storage/framework/views && \
+    rm -f public/hot && \
+    rm -rf bootstrap/cache/* && \
+    rm -rf bootstrap/views/*
+
+RUN composer install --no-dev --optimize-autoloader
+
+COPY --chown=www-data:www-data php/startup.sh /var/www/startup.sh
+
+RUN chmod u+x /var/www/startup.sh
+
+USER www-data

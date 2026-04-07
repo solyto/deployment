@@ -1,0 +1,49 @@
+---
+- name: Deploy db
+  hosts: solyto
+  vars_files:
+    - ../inventory/production/group_vars/db.yml
+  tasks:
+    - name: Ensure db Docker network exists
+      shell: docker network create db || true
+
+    - name: Ensure deploy directory exists
+      file:
+        path: "{{ target_base_path }}/{{ db_path }}"
+        state: directory
+        owner: "{{ deploy_user }}"
+
+    - name: Ensure secrets directory exists
+      file:
+        path: "{{ target_base_path }}/{{ db_path }}/{{ secrets_path }}"
+        state: directory
+        owner: "{{ deploy_user }}"
+        mode: "0700"
+
+    - name: Copy .env
+      template:
+        src: "{{ playbook_dir }}/../templates/db/.env.j2"
+        dest: "{{ target_base_path }}/{{ db_path }}/.env"
+        owner: "{{ deploy_user }}"
+        mode: "0600"
+
+    - name: Copy docker setup
+      template:
+        src: "{{ playbook_dir }}/../templates/db/{{ item.src }}"
+        dest: "{{ target_base_path }}/{{ db_path }}/{{ item.dest }}"
+        owner: "{{ deploy_user }}"
+      loop:
+        - { src: "compose.yml.j2",    dest: "compose.yml" }
+        - { src: "cli.Dockerfile.j2", dest: "cli.Dockerfile" }
+
+    - name: Build images
+      shell: "cd {{ target_base_path }}/{{ db_path }} && docker compose build"
+      register: docker_build
+
+    - name: Print build output
+      debug:
+        msg: "{{ docker_build.stdout_lines }}"
+
+    - name: Restart Docker
+      shell: "cd {{ target_base_path }}/{{ db_path }} && docker compose up -d --remove-orphans"
+      register: docker_restart

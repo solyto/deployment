@@ -1,0 +1,9 @@
+FROM alpine:latest
+
+RUN apk add --no-cache \
+    mysql-client \
+    mariadb-client \
+    postgresql-client \
+    bash
+
+CMD ["sleep", "infinity"]

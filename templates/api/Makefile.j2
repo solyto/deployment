@@ -1,0 +1,2 @@
+api-shell:
+	docker exec -it api-php bash

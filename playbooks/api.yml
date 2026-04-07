@@ -1,0 +1,93 @@
+---
+- name: Deploy api
+  hosts: solyto
+  vars_files:
+    - ../inventory/production/group_vars/api.yml
+  tasks:
+    - name: Ensure api docker network exists
+      shell: docker network create api || true
+
+    - name: Ensure deploy directory exists
+      file:
+        path: "{{ target_base_path }}/{{ api_path }}"
+        state: directory
+        owner: "{{ deploy_user }}"
+
+    - name: Ensure secrets directory exists
+      file:
+        path: "{{ target_base_path }}/{{ api_path }}/{{ secrets_path }}"
+        state: directory
+        owner: "{{ deploy_user }}"
+        mode: "0700"
+
+    - name: Ensure nginx directory exists
+      file:
+        path: "{{ target_base_path }}/{{ api_path }}/nginx"
+        state: directory
+        owner: "{{ deploy_user }}"
+
+    - name: Ensure php directory exists
+      file:
+        path: "{{ target_base_path }}/{{ api_path }}/php"
+        state: directory
+        owner: "{{ deploy_user }}"
+
+    - name: Copy .env
+      template:
+        src: "{{ playbook_dir }}/../templates/api/.env.j2"
+        dest: "{{ target_base_path }}/{{ api_path }}/.env"
+        owner: "{{ deploy_user }}"
+        mode: "0600"
+
+    - name: Copy docker setup
+      template:
+        src: "{{ playbook_dir }}/../templates/api/{{ item.src }}"
+        dest: "{{ target_base_path }}/{{ api_path }}/{{ item.dest }}"
+        owner: "{{ deploy_user }}"
+      loop:
+        - { src: "compose.yml.j2",              dest: "compose.yml" }
+        - { src: "Makefile.j2",                 dest: "Makefile" }
+        - { src: "nginx/api.conf.template.j2",  dest: "nginx/api.conf.template" }
+        - { src: "nginx/Dockerfile.j2",         dest: "nginx/Dockerfile" }
+        - { src: "php/app.php.ini.j2",          dest: "php/app.php.ini" }
+        - { src: "php/dav.php.ini.j2",          dest: "php/dav.php.ini" }
+        - { src: "php/queue.php.ini.j2",        dest: "php/queue.php.ini" }
+        - { src: "php/Dockerfile.j2",           dest: "php/Dockerfile" }
+        - { src: "php/startup.sh.j2",           dest: "php/startup.sh" }
+
+    - name: Remove old source
+      shell: "rm -rf {{ target_base_path }}/{{ api_path }}/{{ src_path }}/"
+
+    - name: Ensure src directory exists
+      file:
+        path: "{{ target_base_path }}/{{ api_path }}/{{ src_path }}"
+        state: directory
+        owner: "{{ deploy_user }}"
+
+    - name: Copy new source
+      synchronize:
+        src: "{{ local_project_root }}/{{ api_path }}"
+        dest: "{{ target_base_path }}/{{ api_path }}/{{ src_path }}/"
+        rsync_opts:
+          - "--exclude=*.sqlite --exclude=vendor --exclude=storage --exclude=.env --exclude=composer.lock"
+          - "--chown={{ deploy_user }}:{{ deploy_user }}"
+
+    - name: Build images
+      shell: "cd {{ target_base_path }}/{{ api_path }} && docker compose build"
+      register: docker_build
+
+    - name: Print build output
+      debug:
+        msg: "{{ docker_build.stdout_lines }}"
+
+    - name: Restart Docker
+      shell: "cd {{ target_base_path }}/{{ api_path }} && docker compose up -d --remove-orphans"
+      register: docker_restart
+
+    - name: Init Laravel
+      shell: "docker exec -t {{ api_php_container }} sh /var/www/startup.sh"
+      register: laravel
+
+    - name: Print Laravel init output
+      debug:
+        msg: "{{ laravel.stdout_lines }}"

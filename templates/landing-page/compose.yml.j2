@@ -1,0 +1,16 @@
+services:
+  node:
+    container_name: {{ project_name }}-node
+    env_file: ".env"
+    build:
+      context: .
+      dockerfile: node/Dockerfile
+    ports:
+      - "{{ node_port }}:{{ node_port }}"
+    restart: unless-stopped
+    networks:
+      - api
+
+networks:
+  api:
+    external: true

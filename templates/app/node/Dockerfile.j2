@@ -1,0 +1,17 @@
+# Build stage
+FROM node:{{ node_version }}-alpine AS builder
+WORKDIR /app
+COPY src/package*.json ./
+RUN npm ci
+COPY src/. .
+RUN npm run build
+
+# Production stage
+FROM node:{{ node_version }}-alpine AS runner
+WORKDIR /app
+COPY src/package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+COPY --from=builder /app/build ./build
+
+EXPOSE {{ node_port }}
+CMD ["node", "build", "--port", "{{ node_port }}"]

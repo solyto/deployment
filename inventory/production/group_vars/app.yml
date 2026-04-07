@@ -1,0 +1,10 @@
+project_name: "app"
+app_path: "app/"
+domain: "my.solyto.app"
+docker_user: "solyto"
+docker_uid: 1014
+docker_gid: 1014
+node_env: "production"
+node_port: 3000
+timezone: "Europe/Berlin"
+node_version: "22"

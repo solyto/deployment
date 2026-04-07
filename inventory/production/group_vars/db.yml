@@ -1,0 +1,7 @@
+project_name: "db"
+db_path: "db/"
+db_database: "db"
+postgres_user: "postgres"
+mariadb_version: "12"
+postgres_version: "17"
+redis_version: "7.4.1"
