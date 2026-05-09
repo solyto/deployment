@@ -1,0 +1,10 @@
+project_name: "landing-page"
+landing_page_path: "landing-page/"
+domain: "solyto-dev.app"
+docker_user: "solyto"
+docker_uid: 1014
+docker_gid: 1014
+node_env: "production"
+node_port: 3001
+timezone: "Europe/Berlin"
+node_version: "22"

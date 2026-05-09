@@ -10,6 +10,10 @@ services:
       MYSQL_PASSWORD_FILE: /run/secrets/mariadb_password
     volumes:
       - mariadb_data:/var/lib/mysql
+{% if enable_read_replicas | default(false) %}
+      - ./config/mariadb-primary.cnf:/etc/mysql/conf.d/replication.cnf:ro
+      - ./config/mariadb-replication-user.sql:/docker-entrypoint-initdb.d/01-replication-user.sql:ro
+{% endif %}
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     secrets:
@@ -19,6 +23,39 @@ services:
     networks:
       - db
     restart: unless-stopped
+{% if enable_read_replicas | default(false) %}
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mariadb-replica:
+    image: mariadb:${MARIADB_VERSION}
+    container_name: ${PROJECT_NAME}-mariadb-replica
+    env_file: ".env"
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mariadb_root_password
+      MYSQL_USER_FILE: /run/secrets/mariadb_user
+      MYSQL_PASSWORD_FILE: /run/secrets/mariadb_password
+    volumes:
+      - mariadb_replica_data:/var/lib/mysql
+      - ./config/mariadb-replica.cnf:/etc/mysql/conf.d/replication.cnf:ro
+      - ./config/mariadb-replica-init.sql:/docker-entrypoint-initdb.d/01-replica-init.sql:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    secrets:
+      - mariadb_user
+      - mariadb_password
+      - mariadb_root_password
+    networks:
+      - db
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    restart: unless-stopped
+{% endif %}
 
   postgres:
     image: postgres:${POSTGRES_VERSION}
@@ -27,8 +64,23 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD_FILE: /run/secrets/postgres_root_password
+{% if enable_read_replicas | default(false) %}
+    command:
+      - postgres
+      - -c
+      - wal_level=replica
+      - -c
+      - max_wal_senders=10
+      - -c
+      - max_replication_slots=10
+      - -c
+      - hot_standby=on
+{% endif %}
     volumes:
       - pg_data:/var/lib/postgresql/data
+{% if enable_read_replicas | default(false) %}
+      - ./config/postgres-replication-setup.sh:/docker-entrypoint-initdb.d/01-replication-setup.sh:ro
+{% endif %}
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     secrets:
@@ -36,6 +88,35 @@ services:
     networks:
       - db
     restart: unless-stopped
+{% if enable_read_replicas | default(false) %}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  postgres-replica:
+    image: postgres:${POSTGRES_VERSION}
+    container_name: ${PROJECT_NAME}-postgres-replica
+    env_file: ".env"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_root_password
+    volumes:
+      - pg_replica_data:/var/lib/postgresql/data
+      - ./config/postgres-replica-entrypoint.sh:/usr/local/bin/replica-entrypoint.sh:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    secrets:
+      - postgres_root_password
+    networks:
+      - db
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ["/usr/local/bin/replica-entrypoint.sh"]
+    restart: unless-stopped
+{% endif %}
 
   redis:
     image: redis:${REDIS_VERSION}
@@ -71,7 +152,13 @@ services:
 
 volumes:
   mariadb_data:
+{% if enable_read_replicas | default(false) %}
+  mariadb_replica_data:
+{% endif %}
   pg_data:
+{% if enable_read_replicas | default(false) %}
+  pg_replica_data:
+{% endif %}
   redis_data:
 
 networks:

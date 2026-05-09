@@ -1,0 +1,12 @@
+project_name: "db"
+db_path: "db/"
+db_database: "db"
+postgres_user: "postgres"
+mariadb_version: "12"
+postgres_version: "17"
+redis_version: "7.4.1"
+
+enable_read_replicas: true
+mariadb_replication_user: "replicator"
+mariadb_replication_password: "replication_password"
+postgres_replication_user: "replicator"

@@ -1,0 +1,5 @@
+local_project_root: "{{ playbook_dir }}/../.."
+target_base_path: "/home"
+deploy_user: "root"
+secrets_path: "secrets"
+src_path: "src"
