@@ -43,6 +43,8 @@ services:
       VAPID_PRIVATE_KEY_FILE: /run/secrets/vapid_private_key
       MAILGUN_SECRET_FILE: /run/secrets/mailgun_secret
       BGG_API_KEY_FILE: /run/secrets/bgg_api_key
+      IMGPROXY_KEY_FILE: /run/secrets/imgproxy_key
+      IMGPROXY_SALT_FILE: /run/secrets/imgproxy_salt
       TZ: UTC
     volumes:
       - ./storage/:/var/www/storage/
@@ -61,6 +63,8 @@ services:
       - vapid_private_key
       - vapid_public_key
       - bgg_api_key
+      - imgproxy_key
+      - imgproxy_salt
     restart: unless-stopped
     networks:
       - api
@@ -123,6 +127,8 @@ services:
       HARDCOVER_API_KEY_FILE: /run/secrets/hardcover_api_key
       VAPID_PRIVATE_KEY_FILE: /run/secrets/vapid_private_key
       MAILGUN_SECRET_FILE: /run/secrets/mailgun_secret
+      IMGPROXY_KEY_FILE: /run/secrets/imgproxy_key
+      IMGPROXY_SALT_FILE: /run/secrets/imgproxy_salt
       TZ: UTC
     volumes:
       - ./storage/:/var/www/storage/
@@ -138,6 +144,8 @@ services:
       - hardcover_api_key
       - mailgun_secret
       - vapid_private_key
+      - imgproxy_key
+      - imgproxy_salt
     restart: unless-stopped
     networks:
       - api
@@ -148,10 +156,13 @@ services:
     image: darthsim/imgproxy:latest
     environment:
       IMGPROXY_LOCAL_FILESYSTEM_ROOT: /images
-      IMGPROXY_KEY: ${IMGPROXY_KEY}
-      IMGPROXY_SALT: ${IMGPROXY_SALT}
+      IMGPROXY_KEY_FILE: /run/secrets/imgproxy_key
+      IMGPROXY_SALT_FILE: /run/secrets/imgproxy_salt
     volumes:
       - ./storage/:/images:ro
+    secrets:
+      - imgproxy_key
+      - imgproxy_salt
     restart: unless-stopped
     networks:
       - api
@@ -191,3 +202,7 @@ secrets:
     file: ./secrets/vapid_private_key
   bgg_api_key:
     file: ./secrets/bgg_api_key
+  imgproxy_key:
+    file: ./secrets/imgproxy_key
+  imgproxy_salt:
+    file: ./secrets/imgproxy_salt
