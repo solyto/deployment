@@ -8,3 +8,6 @@ node_env: "production"
 node_port: 3000
 timezone: "Europe/Berlin"
 node_version: "22"
+legal_notice_url: "https://solyto.app/#legal-notice"
+privacy_url: "https://solyto.app/#privacy"
+terms_url: "https://solyto.app/#terms"
