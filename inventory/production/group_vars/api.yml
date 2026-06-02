@@ -26,3 +26,6 @@ ai_base_url: "https://openai.inference.de-txl.ionos.com/v1"
 ai_model: "meta-llama/Llama-3.3-70B-Instruct"
 image_driver: "imgproxy"
 telegram_debug_chat_id: "52220354"
+password_min_length: 12
+password_uncompromised: true
+email_confirmation: true

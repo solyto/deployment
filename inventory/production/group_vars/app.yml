@@ -11,3 +11,5 @@ node_version: "22"
 legal_notice_url: "https://solyto.app/#legal-notice"
 privacy_url: "https://solyto.app/#privacy"
 terms_url: "https://solyto.app/#terms"
+disable_dev_requests: false
+redirect_after_logout: "https://solyto.app"
