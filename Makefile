@@ -9,3 +9,8 @@ deploy-landing-page:
 
 deploy-db:
 	ansible-playbook playbooks/db.yml
+
+deploy:
+	make deploy-api
+	make deploy-app
+	make deploy-landing-page
