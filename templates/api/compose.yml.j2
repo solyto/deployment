@@ -44,6 +44,7 @@ services:
       MAILGUN_SECRET_FILE: /run/secrets/mailgun_secret
       BGG_API_KEY_FILE: /run/secrets/bgg_api_key
       TMDB_ACCESS_TOKEN_FILE: /run/secrets/tmdb_access_token
+      DISCOGS_ACCESS_TOKEN_FILE: /run/secrets/discogs_access_token
       IMGPROXY_KEY_FILE: /run/secrets/imgproxy_key
       IMGPROXY_SALT_FILE: /run/secrets/imgproxy_salt
       TZ: UTC
@@ -65,6 +66,7 @@ services:
       - vapid_public_key
       - bgg_api_key
       - tmdb_access_token
+      - discogs_access_token
       - imgproxy_key
       - imgproxy_salt
     restart: unless-stopped
@@ -208,6 +210,8 @@ secrets:
     file: ./secrets/bgg_api_key
   tmdb_access_token:
     file: ./secrets/tmdb_access_token
+  discogs_access_token:
+    file: ./secrets/discogs_access_token
   imgproxy_key:
     file: ./secrets/imgproxy_key
   imgproxy_salt:
