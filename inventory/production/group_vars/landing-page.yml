@@ -8,5 +8,5 @@ node_env: "production"
 node_port: 3001
 timezone: "Europe/Berlin"
 node_version: "22"
-desktop_version: "1.0.9"
-mobile_version: "1.0.9"
+desktop_version: "1.0.10"
+mobile_version: "1.0.10"
