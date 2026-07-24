@@ -13,4 +13,3 @@ deploy-db:
 deploy:
 	make deploy-api
 	make deploy-app
-	make deploy-landing-page
