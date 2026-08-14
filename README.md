@@ -37,6 +37,7 @@ make deploy-api
 make deploy-app
 make deploy-landing-page
 make deploy-db
+make deploy-docs
 ```
 
 Or run a playbook directly:

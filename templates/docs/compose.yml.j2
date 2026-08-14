@@ -1,0 +1,16 @@
+services:
+  nginx:
+    container_name: {{ project_name }}-nginx
+    env_file: ".env"
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile
+    ports:
+      - "{{ docs_listen_port }}:{{ docs_listen_port }}"
+    restart: unless-stopped
+    networks:
+      - api
+
+networks:
+  api:
+    external: true

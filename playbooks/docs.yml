@@ -1,0 +1,63 @@
+---
+- name: Deploy docs
+  hosts: solyto
+  vars_files:
+    - ../inventory/production/group_vars/docs.yml
+  tasks:
+    - name: Ensure deploy directory exists
+      file:
+        path: "{{ target_base_path }}/{{ docs_path }}"
+        state: directory
+        owner: "{{ deploy_user }}"
+
+    - name: Ensure nginx directory exists
+      file:
+        path: "{{ target_base_path }}/{{ docs_path }}/nginx"
+        state: directory
+        owner: "{{ deploy_user }}"
+
+    - name: Copy .env
+      template:
+        src: "{{ playbook_dir }}/../templates/docs/.env.j2"
+        dest: "{{ target_base_path }}/{{ docs_path }}/.env"
+        owner: "{{ deploy_user }}"
+        mode: "0600"
+
+    - name: Copy docker setup
+      template:
+        src: "{{ playbook_dir }}/../templates/docs/{{ item.src }}"
+        dest: "{{ target_base_path }}/{{ docs_path }}/{{ item.dest }}"
+        owner: "{{ deploy_user }}"
+      loop:
+        - { src: "compose.yml.j2",     dest: "compose.yml" }
+        - { src: "nginx/Dockerfile.j2", dest: "nginx/Dockerfile" }
+        - { src: "nginx/docs.conf.j2",  dest: "nginx/docs.conf" }
+
+    - name: Remove old source
+      shell: "rm -rf {{ target_base_path }}/{{ docs_path }}/{{ src_path }}/"
+
+    - name: Ensure src directory exists
+      file:
+        path: "{{ target_base_path }}/{{ docs_path }}/{{ src_path }}"
+        state: directory
+        owner: "{{ deploy_user }}"
+
+    - name: Copy new source
+      synchronize:
+        src: "{{ local_project_root }}/{{ docs_path }}"
+        dest: "{{ target_base_path }}/{{ docs_path }}/{{ src_path }}/"
+        rsync_opts:
+          - "--exclude=node_modules --exclude=.astro --exclude=dist --exclude=.git --exclude=/docs --exclude=.manigot --exclude=AGENTS.md"
+          - "--chown={{ deploy_user }}:{{ deploy_user }}"
+
+    - name: Build images
+      shell: "cd {{ target_base_path }}/{{ docs_path }} && docker compose build"
+      register: docker_build
+
+    - name: Print build output
+      debug:
+        msg: "{{ docker_build.stdout_lines }}"
+
+    - name: Restart Docker
+      shell: "cd {{ target_base_path }}/{{ docs_path }} && docker compose up -d --remove-orphans"
+      register: docker_restart

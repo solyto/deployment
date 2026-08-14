@@ -1,0 +1,11 @@
+project_name: "docs"
+docs_path: "documentation/"
+domain: "docs.solyto.app"
+docker_user: "solyto"
+docker_uid: 1014
+docker_gid: 1014
+node_env: "production"
+node_version: "22"
+nginx_version: "1.27"
+docs_listen_port: 3002
+timezone: "Europe/Berlin"

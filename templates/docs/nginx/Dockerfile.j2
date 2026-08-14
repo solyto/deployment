@@ -1,0 +1,15 @@
+# Build stage
+FROM node:{{ node_version }}-alpine AS builder
+WORKDIR /app
+COPY src/package*.json ./
+RUN npm ci
+COPY src/. .
+RUN npm run build
+
+# Production stage
+FROM nginx:{{ nginx_version }}-alpine AS runner
+RUN rm /etc/nginx/conf.d/default.conf
+COPY nginx/docs.conf /etc/nginx/conf.d/docs.conf
+COPY --from=builder /app/dist /usr/share/nginx/html/
+
+EXPOSE {{ docs_listen_port }}

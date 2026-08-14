@@ -1,0 +1,41 @@
+server {
+    listen {{ docs_listen_port }};
+    server_name {{ domain }};
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    server_tokens off;
+
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    gzip on;
+    gzip_vary on;
+    gzip_comp_level 5;
+    gzip_min_length 1024;
+    gzip_types text/html text/plain text/css application/javascript application/json image/svg+xml;
+
+    location /_astro/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    location ~* \.(jpg|jpeg|png|gif|ico|svg|webp|woff2?)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    location /pagefind/ {
+        expires 1h;
+        add_header Cache-Control "public";
+        access_log off;
+    }
+
+    location / {
+        try_files $uri $uri/ /404.html;
+    }
+}
