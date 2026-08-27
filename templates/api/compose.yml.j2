@@ -45,6 +45,8 @@ services:
       BGG_API_KEY_FILE: /run/secrets/bgg_api_key
       TMDB_ACCESS_TOKEN_FILE: /run/secrets/tmdb_access_token
       DISCOGS_ACCESS_TOKEN_FILE: /run/secrets/discogs_access_token
+      SPOTIFY_CLIENT_ID_FILE: /run/secrets/spotify_client_id
+      SPOTIFY_CLIENT_SECRET_FILE: /run/secrets/spotify_client_secret
       IMGPROXY_KEY_FILE: /run/secrets/imgproxy_key
       IMGPROXY_SALT_FILE: /run/secrets/imgproxy_salt
       TZ: UTC
@@ -67,6 +69,8 @@ services:
       - bgg_api_key
       - tmdb_access_token
       - discogs_access_token
+      - spotify_client_id
+      - spotify_client_secret
       - imgproxy_key
       - imgproxy_salt
     restart: unless-stopped
@@ -134,6 +138,8 @@ services:
       MAILGUN_SECRET_FILE: /run/secrets/mailgun_secret
       IMGPROXY_KEY_FILE: /run/secrets/imgproxy_key
       IMGPROXY_SALT_FILE: /run/secrets/imgproxy_salt
+      SPOTIFY_CLIENT_ID_FILE: /run/secrets/spotify_client_id
+      SPOTIFY_CLIENT_SECRET_FILE: /run/secrets/spotify_client_secret
       TZ: UTC
     volumes:
       - ./storage/:/var/www/storage/
@@ -152,6 +158,8 @@ services:
       - vapid_private_key
       - imgproxy_key
       - imgproxy_salt
+      - spotify_client_id
+      - spotify_client_secret
     restart: unless-stopped
     networks:
       - api
@@ -212,6 +220,10 @@ secrets:
     file: ./secrets/tmdb_access_token
   discogs_access_token:
     file: ./secrets/discogs_access_token
+  spotify_client_id:
+    file: ./secrets/spotify_client_id
+  spotify_client_secret:
+    file: ./secrets/spotify_client_secret
   imgproxy_key:
     file: ./secrets/imgproxy_key
   imgproxy_salt:
