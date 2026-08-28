@@ -138,8 +138,6 @@ services:
       MAILGUN_SECRET_FILE: /run/secrets/mailgun_secret
       IMGPROXY_KEY_FILE: /run/secrets/imgproxy_key
       IMGPROXY_SALT_FILE: /run/secrets/imgproxy_salt
-      SPOTIFY_CLIENT_ID_FILE: /run/secrets/spotify_client_id
-      SPOTIFY_CLIENT_SECRET_FILE: /run/secrets/spotify_client_secret
       TZ: UTC
     volumes:
       - ./storage/:/var/www/storage/
@@ -158,8 +156,6 @@ services:
       - vapid_private_key
       - imgproxy_key
       - imgproxy_salt
-      - spotify_client_id
-      - spotify_client_secret
     restart: unless-stopped
     networks:
       - api
