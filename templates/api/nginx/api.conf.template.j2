@@ -13,6 +13,13 @@ server {
 
     fastcgi_hide_header X-Powered-By;
 
+    client_max_body_size 50M;
+
+    error_page 413 @error_413;
+    error_page 502 @error_502;
+    error_page 503 @error_503;
+    error_page 504 @error_504;
+
     gzip on;
     gzip_vary on;
     gzip_comp_level 5;
@@ -32,7 +39,6 @@ server {
     }
 
     location / {
-        client_max_body_size 50M;
         fastcgi_param REQUEST_METHOD $request_method;
 
         try_files $uri $uri/ /index.php?$query_string;
@@ -46,6 +52,31 @@ server {
         fastcgi_param PATH_INFO $fastcgi_path_info;
         fastcgi_buffers 16 16k;
         fastcgi_buffer_size 32k;
+    }
+
+    # nginx's own error responses carry CORS headers so the frontend can read the status code
+    location @error_413 {
+        default_type application/json;
+        add_header Access-Control-Allow-Origin "*" always;
+        return 413 '{"message":"Payload too large"}';
+    }
+
+    location @error_502 {
+        default_type application/json;
+        add_header Access-Control-Allow-Origin "*" always;
+        return 502 '{"message":"Bad gateway"}';
+    }
+
+    location @error_503 {
+        default_type application/json;
+        add_header Access-Control-Allow-Origin "*" always;
+        return 503 '{"message":"Service unavailable"}';
+    }
+
+    location @error_504 {
+        default_type application/json;
+        add_header Access-Control-Allow-Origin "*" always;
+        return 504 '{"message":"Gateway timeout"}';
     }
 }
 
