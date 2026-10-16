@@ -69,7 +69,7 @@
         src: "{{ local_project_root }}/{{ api_path }}"
         dest: "{{ target_base_path }}/{{ api_path }}/{{ src_path }}/"
         rsync_opts:
-          - "--exclude=*.sqlite --exclude=vendor --exclude=storage --exclude=.env --exclude=composer.lock"
+          - "--exclude=*.sqlite --exclude=vendor --exclude=storage --exclude=.env --exclude=composer.lock --exclude=.git --exclude=tests --exclude=docs/node_modules"
           - "--chown={{ deploy_user }}:{{ deploy_user }}"
 
     - name: Build images
