@@ -1,3 +1,6 @@
+proxy_cache_path /var/cache/nginx/favicons levels=1:2 keys_zone=favicon_cache:10m max_size=500m inactive=60d use_temp_path=off;
+limit_req_zone $binary_remote_addr zone=favicon_req:10m rate=20r/s;
+
 server {
     listen {{ api_listen_port }};
     server_name {{ api_nginx_urls }};
@@ -25,6 +28,32 @@ server {
     gzip_comp_level 5;
     gzip_min_length 1024;
     gzip_types application/json text/plain text/css application/javascript;
+
+    # Website icons, fetched from DuckDuckGo once and cached here so browsers never contact it directly
+    location ~ "^/favicons/(?<fav_host>[a-z0-9-]+(\.[a-z0-9-]+)+)\.ico$" {
+        limit_req zone=favicon_req burst=200 nodelay;
+
+        resolver 127.0.0.11 valid=300s ipv6=off;
+        proxy_pass https://icons.duckduckgo.com/ip3/$fav_host.ico;
+        proxy_ssl_server_name on;
+        proxy_pass_request_headers off;
+        proxy_connect_timeout 3s;
+        proxy_read_timeout 5s;
+
+        proxy_cache favicon_cache;
+        proxy_cache_key $fav_host;
+        proxy_cache_valid 200 404 30d;
+        proxy_cache_use_stale error timeout updating http_429 http_500 http_502 http_503 http_504;
+        proxy_cache_background_update on;
+        proxy_cache_lock on;
+
+        proxy_ignore_headers Cache-Control Expires Set-Cookie;
+        proxy_hide_header Cache-Control;
+        proxy_hide_header Expires;
+        proxy_hide_header Set-Cookie;
+        expires 7d;
+        access_log off;
+    }
 
     location ^~ /storage/ {
         alias /var/www/storage/app/public/;
