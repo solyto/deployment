@@ -1,5 +1,10 @@
 proxy_cache_path /var/cache/nginx/favicons levels=1:2 keys_zone=favicon_cache:10m max_size=500m inactive=60d use_temp_path=off;
 limit_req_zone $binary_remote_addr zone=favicon_req:10m rate=20r/s;
+map $fav_letter $fav_letter_uc {
+    default $fav_letter;
+    a A; b B; c C; d D; e E; f F; g G; h H; i I; j J; k K; l L; m M;
+    n N; o O; p P; q Q; r R; s S; t T; u U; v V; w W; x X; y Y; z Z;
+}
 
 server {
     listen {{ api_listen_port }};
@@ -30,7 +35,7 @@ server {
     gzip_types application/json text/plain text/css application/javascript;
 
     # Website icons, fetched from DuckDuckGo once and cached here so browsers never contact it directly
-    location ~ "^/favicons/(?<fav_host>[a-z0-9-]+(\.[a-z0-9-]+)+)\.ico$" {
+    location ~ "^/favicons/(?<fav_host>(?<fav_letter>[a-z0-9])[a-z0-9-]*(\.[a-z0-9-]+)+)\.ico$" {
         limit_req zone=favicon_req burst=200 nodelay;
 
         resolver 127.0.0.11 valid=300s ipv6=off;
@@ -53,6 +58,18 @@ server {
         proxy_hide_header Set-Cookie;
         expires 7d;
         access_log off;
+
+        proxy_intercept_errors on;
+        error_page 404 =200 @favicon_placeholder;
+    }
+
+    # Shown for sites DuckDuckGo has no icon for: the first letter of the domain in a light grey circle (c-neutral-1, c-neutral-5)
+    location @favicon_placeholder {
+        types { }
+        default_type image/svg+xml;
+        expires 7d;
+        access_log off;
+        return 200 '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#f3f4f6"/><text x="12" y="16.5" fill="#6a7282" font-family="system-ui, sans-serif" font-size="13" font-weight="600" text-anchor="middle">$fav_letter_uc</text></svg>';
     }
 
     location ^~ /storage/ {
