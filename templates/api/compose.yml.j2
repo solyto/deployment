@@ -71,6 +71,10 @@ services:
       - spotify_client_secret
       - imgproxy_key
       - imgproxy_salt
+{% if ntfy_extra_host | default('') %}
+    extra_hosts:
+      - "{{ ntfy_extra_host }}"
+{% endif %}
     restart: unless-stopped
     networks:
       - api
@@ -154,6 +158,10 @@ services:
       - vapid_private_key
       - imgproxy_key
       - imgproxy_salt
+{% if ntfy_extra_host | default('') %}
+    extra_hosts:
+      - "{{ ntfy_extra_host }}"
+{% endif %}
     restart: unless-stopped
     networks:
       - api

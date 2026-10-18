@@ -6,3 +6,4 @@ ansible_user=
 ansible_ssh_private_key_file=
 ntfy_url=
 ntfy_token=
+ntfy_extra_host=
