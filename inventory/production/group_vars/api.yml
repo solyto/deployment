@@ -1,5 +1,5 @@
 project_name: "api"
-api_version: "1.1.0"
+api_version: "1.1.1"
 docker_user: "api"
 docker_uid: 1015
 docker_gid: 1015
