@@ -64,13 +64,55 @@
         state: directory
         owner: "{{ deploy_user }}"
 
-    - name: Copy new source
-      synchronize:
-        src: "{{ local_project_root }}/{{ api_path }}"
-        dest: "{{ target_base_path }}/{{ api_path }}/{{ src_path }}/"
-        rsync_opts:
-          - "--exclude=*.sqlite --exclude=vendor --exclude=storage --exclude=.env --exclude=.git --exclude=tests --exclude=docs/node_modules"
-          - "--chown={{ deploy_user }}:{{ deploy_user }}"
+    # Deploys what git tracks at HEAD, not the working tree: untracked and
+    # ignored files (shell history, editor/agent folders, .git) never leave
+    # this machine, and uncommitted changes are not deployed (see
+    # docs/backlog/rsync-copies-local-files.md).
+    - name: Copy new source (git HEAD)
+      block:
+        - name: Check for uncommitted changes
+          shell: "git -C {{ local_project_root }}/{{ api_path }} status --porcelain"
+          delegate_to: localhost
+          run_once: true
+          changed_when: false
+          register: git_status
+
+        - name: Warn about uncommitted changes, they are not deployed
+          debug:
+            msg: "Not deployed (uncommitted): {{ git_status.stdout_lines }}"
+          when: git_status.stdout | length > 0
+          run_once: true
+
+        - name: Create a temporary directory for the source
+          tempfile:
+            state: directory
+            suffix: -api-src
+          delegate_to: localhost
+          run_once: true
+          register: source_tmp
+
+        - name: Extract HEAD into the temporary directory
+          shell: "set -o pipefail && git -C {{ local_project_root }}/{{ api_path }} archive --format=tar HEAD | tar -x -C {{ source_tmp.path }}"
+          args:
+            executable: /bin/bash
+          delegate_to: localhost
+          run_once: true
+
+        - name: Copy the source
+          synchronize:
+            src: "{{ source_tmp.path }}/"
+            dest: "{{ target_base_path }}/{{ api_path }}/{{ src_path }}/"
+            rsync_opts:
+              - "--exclude=*.sqlite --exclude=vendor --exclude=storage --exclude=.env --exclude=.git --exclude=tests --exclude=docs/node_modules"
+              - "--chown={{ deploy_user }}:{{ deploy_user }}"
+      always:
+        - name: Remove the temporary directory
+          file:
+            path: "{{ source_tmp.path }}"
+            state: absent
+          delegate_to: localhost
+          run_once: true
+          when: source_tmp.path is defined
 
     - name: Build images
       shell: "cd {{ target_base_path }}/{{ api_path }} && docker compose build"
