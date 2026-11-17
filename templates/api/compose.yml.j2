@@ -48,7 +48,6 @@ services:
       SPOTIFY_CLIENT_SECRET_FILE: /run/secrets/spotify_client_secret
       IMGPROXY_KEY_FILE: /run/secrets/imgproxy_key
       IMGPROXY_SALT_FILE: /run/secrets/imgproxy_salt
-      TZ: UTC
     volumes:
       - ./storage/:/var/www/storage/
       - ./php/app.php.ini:/usr/local/etc/php/conf.d/solyto-php.ini:ro
@@ -98,7 +97,6 @@ services:
       DAV_DB_USERNAME_FILE: /run/secrets/dav_db_user
       DAV_DB_PASSWORD_FILE: /run/secrets/dav_db_password
       APP_KEY_FILE: /run/secrets/app_key
-      TZ: UTC
     volumes:
       - ./storage/:/var/www/storage/
       - ./php/dav.php.ini:/usr/local/etc/php/conf.d/solyto-php.ini:ro
@@ -141,7 +139,61 @@ services:
       MAILGUN_SECRET_FILE: /run/secrets/mailgun_secret
       IMGPROXY_KEY_FILE: /run/secrets/imgproxy_key
       IMGPROXY_SALT_FILE: /run/secrets/imgproxy_salt
-      TZ: UTC
+    volumes:
+      - ./storage/:/var/www/storage/
+      - ./php/queue.php.ini:/usr/local/etc/php/conf.d/solyto-php.ini:ro
+    secrets:
+      - db_user
+      - db_password
+      - dav_db_user
+      - dav_db_password
+      - app_key
+      - solyto_bot_webhook_token
+      - solyto_bot_telegram_token
+      - hardcover_api_key
+      - tmdb_access_token
+      - mailgun_secret
+      - vapid_private_key
+      - vapid_public_key
+      - imgproxy_key
+      - imgproxy_salt
+{% if ntfy_extra_host | default('') %}
+    extra_hosts:
+      - "{{ ntfy_extra_host }}"
+{% endif %}
+    restart: unless-stopped
+    networks:
+      - api
+      - db
+
+  pulse:
+    container_name: ${PROJECT_NAME}-pulse
+    env_file: ".env"
+    build:
+      context: .
+      dockerfile: php/Dockerfile
+      args:
+        UID: ${UID}
+        GID: ${GID}
+        USER: ${USER}
+        PHP_VERSION: ${PHP_VERSION}
+    user: www-data
+    command: php artisan pulse:work
+    environment:
+      DB_USERNAME_FILE: /run/secrets/db_user
+      DB_PASSWORD_FILE: /run/secrets/db_password
+      DAV_DB_USERNAME_FILE: /run/secrets/dav_db_user
+      DAV_DB_PASSWORD_FILE: /run/secrets/dav_db_password
+      APP_KEY_FILE: /run/secrets/app_key
+      SOLYTO_BOT_WEBHOOK_TOKEN_FILE: /run/secrets/solyto_bot_webhook_token
+      SOLYTO_BOT_TELEGRAM_TOKEN_FILE: /run/secrets/solyto_bot_telegram_token
+      HARDCOVER_API_KEY_FILE: /run/secrets/hardcover_api_key
+      TMDB_ACCESS_TOKEN_FILE: /run/secrets/tmdb_access_token
+      VAPID_PUBLIC_KEY_FILE: /run/secrets/vapid_public_key
+      VAPID_PRIVATE_KEY_FILE: /run/secrets/vapid_private_key
+      MAILGUN_SECRET_FILE: /run/secrets/mailgun_secret
+      IMGPROXY_KEY_FILE: /run/secrets/imgproxy_key
+      IMGPROXY_SALT_FILE: /run/secrets/imgproxy_salt
     volumes:
       - ./storage/:/var/www/storage/
       - ./php/queue.php.ini:/usr/local/etc/php/conf.d/solyto-php.ini:ro
