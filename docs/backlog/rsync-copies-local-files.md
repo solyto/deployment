@@ -1,66 +1,77 @@
 # Backlog: deploys copy local, ignored files to the server
 
 created: 2026-11-17
+updated: 2026-11-17 (option 1 decided by the owner, ready for implementation)
 
-## What
+## Job (decided, do exactly this)
 
 The deploy playbooks rsync the **local working tree** of each project to the
-server, excluding only a few paths. Everything else goes along, including
-files git ignores: shell history, editor and agent folders, local database
-backups and, for app and landing page, the `.git` folder. Deploy only what the
-build needs.
+server. Everything that isn't excluded goes along, including files git ignores
+(shell history, editor and agent folders, a local database backup) and, for
+app and landing page, the whole `.git` folder.
 
-## Findings
+Change the four source-copying playbooks to deploy **what git tracks at
+`HEAD`**, using `git archive`:
 
-Excludes per playbook (`rsync_opts`):
+| Playbook | Copy step | Repo |
+|---|---|---|
+| `playbooks/api.yml` | "Copy new source", `:66-72` | `{{ local_project_root }}/{{ api_path }}` |
+| `playbooks/app.yml` | "Copy new source", `:44-50` | `{{ local_project_root }}/{{ app_path }}` |
+| `playbooks/landing-page.yml` | "Copy new source", `:44-50` | `{{ local_project_root }}/{{ landing_page_path }}` |
+| `playbooks/docs.yml` | "Copy new source", `:45-51` | `{{ local_project_root }}/{{ docs_path }}` |
 
-| Playbook | Excludes |
-|---|---|
-| `playbooks/api.yml:72` | `*.sqlite`, `vendor`, `storage`, `.env`, `.git`, `tests`, `docs/node_modules` |
-| `playbooks/app.yml:49` | `node_modules`, `.env`, `build` |
-| `playbooks/landing-page.yml:49` | `node_modules`, `.env`, `build` |
-| `playbooks/docs.yml:50` | `node_modules`, `.astro`, `dist`, `.git`, `/docs`, `.manigot`, `AGENTS.md` |
+For each:
+1. **On the control machine** (`delegate_to: localhost`, `run_once`): create a
+   temporary directory and extract `git -C <repo> archive --format=tar HEAD`
+   into it.
+2. **Before that, warn about uncommitted changes:** run `git -C <repo> status
+   --porcelain` and, if it prints anything, show it with a `debug` message
+   ("not deployed: …"). **Do not fail.** (The api checkout always has a
+   modified `.env.testing`; failing would block every deploy.)
+3. **Sync the temporary directory** to the server path the playbook uses today
+   (same `dest`, same `--chown` options), instead of the working tree.
+4. **Keep each playbook's existing excludes** that still apply to tracked
+   files, so the server gets the same content as before minus the untracked
+   files: api keeps `--exclude=tests` (and the others are now redundant but
+   harmless); docs keeps `--exclude=/docs --exclude=AGENTS.md
+   --exclude=.manigot`.
+5. **Remove the temporary directory** afterwards (also when a later step
+   fails: use `block`/`always`).
 
-Ignored local files that are copied today (seen on the dev machine,
-2026-11-17):
+Everything else in the playbooks stays as it is: the "Remove old source" step,
+templates, `docker compose build`, `up -d`, `startup.sh`.
 
-- **api:** `.bash_history`, `.claude/`, `.composer/`, `.config/`, `.idea/`,
-  `.manigot/`, `.phpunit.cache/`, `database/database.sqlite.bak` (only
-  `*.sqlite` is excluded, not `.bak`), `docs/package.json` and others under
-  `docs/`, plus a modified `.env.testing` (only `.env` is excluded).
-- **app:** `.git/` (not excluded), `.claude/`, `.idea/`, `.manigot/`,
-  `.opencode/`, `.svelte-kit/`.
-- **landing page:** `.git/`, `.idea/`, `.svelte-kit/`.
+## Why this is enough (verified 2026-11-17)
 
-`.bash_history` and agent or editor folders can contain commands, paths or
-tokens, and don't belong on the server. `.git/` ships the full history.
-`bootstrap/cache/*.php` is copied too, but `startup.sh` removes it before use.
+- All builds run on the server from tracked files: `composer install` (api,
+  `templates/api/php/Dockerfile.j2:44`), `npm ci` + `npm run build` (app,
+  landing page, docs). Lockfiles are tracked.
+- `.env` files come from `templates/*/.env.j2`, not from the working tree.
+- `api/public/storage` (the `storage:link` symlink, gitignored) is not needed:
+  nginx serves `/storage/` with `alias /var/www/storage/app/public/`
+  (`templates/api/nginx/api.conf.template.j2:75-76`).
+- `api/bootstrap/cache/*.php` is removed and rebuilt by `startup.sh`.
+- `api/.gitattributes` only export-ignores `.github`, `CHANGELOG.md` and
+  `.styleci.yml`. No repo has submodules.
+- Files left on the server from earlier deploys disappear on the next deploy:
+  every playbook removes the old source before copying.
 
-Found while preparing the passkey hotfix deploy (2026-11-17). Not specific to
-that deploy: it happens on every one.
+Behaviour change to be aware of: **uncommitted changes are no longer
+deployed**. A deploy always matches a commit (see `docs/hotfixes.md`, which
+already assumes that).
 
-## Options
+## Out of scope (do not do)
 
-1. **Deploy what git tracks.** Build the file list from git instead of the
-   working tree, e.g. `git ls-files` or `git archive HEAD` into a temp folder
-   and rsync that. Ignored and untracked files never leave the machine, and a
-   deploy always matches a commit. A side effect to keep in mind: uncommitted
-   changes are no longer deployed (usually what we want).
-2. **Extend the excludes.** Add `.git`, `.bash_history`, `.claude`,
-   `.composer`, `.config`, `.idea`, `.manigot`, `.opencode`, `.svelte-kit`,
-   `.phpunit.cache`, `*.bak`, `.env.*` and so on to each playbook, or use one
-   shared `--exclude-from` file. Smallest change, but every new tool folder has
-   to be added by hand.
-3. **Build artifacts elsewhere.** Build the images from a clean checkout (CI,
-   or a script that clones the tag) instead of the developer's working tree.
-   The most robust, and the largest change.
+- Building images from a clean clone or in CI.
+- Changes to templates, Dockerfiles, `startup.sh`, `releases/release.sh` or the
+  `dockerhub/` repo.
+- Failing a deploy because of uncommitted changes.
 
-## Notes
+## Checks
 
-- Check what is already on the server: `{{ target_base_path }}/{{ api_path }}/src`
-  (and the app and landing page paths) may still hold these files from
-  earlier deploys. `api.yml` removes the old source before copying ("Remove
-  old source"); check whether the other playbooks do too.
-- For the `.env.testing` case: the deploy also ships local uncommitted
-  changes, which is how a modified tracked file ends up on the server.
-  Option 1 would prevent that.
+- `ansible-playbook --syntax-check` passes for all four playbooks.
+- If possible, run the archive and extract steps locally once and compare the
+  file list with `git -C <repo> ls-files` (minus the excluded paths).
+- **Manual, by the owner:** the first real deploy of each project afterwards.
+  Check that the site works and that the server source directory holds no
+  `.git`, `.bash_history`, `.claude`, `.idea` or `*.sqlite.bak`.
