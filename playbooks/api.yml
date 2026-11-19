@@ -103,7 +103,7 @@
             src: "{{ source_tmp.path }}/"
             dest: "{{ target_base_path }}/{{ api_path }}/{{ src_path }}/"
             rsync_opts:
-              - "--exclude=*.sqlite --exclude=vendor --exclude=storage --exclude=.env --exclude=.git --exclude=tests --exclude=docs/node_modules"
+              - "--exclude=*.sqlite --exclude=/vendor --exclude=/storage --exclude=.env --exclude=.git --exclude=/tests --exclude=docs/node_modules"
               - "--chown={{ deploy_user }}:{{ deploy_user }}"
       always:
         - name: Remove the temporary directory
